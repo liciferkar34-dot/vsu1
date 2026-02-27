@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lift Operation Safety Report - ADRA</title>
+    <style>
+        /* =========================================
+           ১. সাধারণ স্টাইল (Web UI)
+           ========================================= */
+        body {
+            font-family: Arial, sans-serif; /* এই ফর্মটির অরিজিনাল ফন্ট Arial */
+            color: #333;
+            background-color: #e9ecef;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #fff;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            border-top: 5px solid #003366;
+        }
+
+        .controls {
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .controls button, .controls a {
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: bold;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .home-btn { background: #6c757d; color: white; }
+        .home-btn:hover { background: #5a6268; }
+        .add-btn { background: #0056b3; color: white; }
+        .print-btn { background: #28a745; color: white; }
+        .clear-btn { background: #dc3545; color: white; }
+
+        .document-area {
+            padding: 40px 30px;
+        }
+
+        /* টেবিল ডিজাইন */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 30px;
+            table-layout: fixed;
+        }
+        th, td {
+            border: 1px solid #000;
+            padding: 8px 5px;
+            text-align: center;
+            vertical-align: middle;
+            font-size: 13px;
+        }
+        th {
+            background-color: #f1f5f9;
+            font-weight: bold;
+            color: #000;
+        }
+
+        /* এডিট বক্স ডিজাইন */
+        .edit-box {
+            outline: none;
+            width: 100%;
+            box-sizing: border-box;
+            min-height: 20px;
+            background-color: #f0f7ff;
+            border: 1px dashed #80bdff;
+            border-radius: 3px;
+            padding: 4px;
+            text-align: center;
+        }
+        .edit-box:focus {
+            background-color: #fffdf5;
+            border-color: #ff9933;
+            border-style: solid;
+        }
+
+        /* সিগনেচার সেকশন */
+        .footer-sign {
+            margin-top: 50px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            padding-right: 50px;
+            font-size: 15px;
+            font-weight: bold;
+            gap: 10px;
+        }
+        .sign-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+        }
+        .sign-input {
+            width: 200px;
+            border-bottom: 1px solid #000;
+            text-align: left;
+            padding-left: 5px;
+            font-weight: normal;
+        }
+
+        .del-btn { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px; font-weight: bold; }
+
+        #toast { visibility: hidden; min-width: 200px; background-color: #28a745; color: #fff; text-align: center; border-radius: 4px; padding: 10px; position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%); z-index: 1000; font-weight: bold;}
+        #toast.show { visibility: visible; }
+
+        /* =========================================
+           ২. PRINT স্টাইল (Landscape Optimization)
+           ========================================= */
+        @media print {
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { background: #fff !important; color: #000 !important; }
+            
+            /* চওড়া পেজ (Landscape) সেটিং */
+            @page { size: A4 landscape; margin: 15mm; }
+
+            .app-container { box-shadow: none !important; border: none !important; max-width: 100% !important; }
+            .controls, .no-print, #toast { display: none !important; }
+            .document-area { padding: 0 !important; }
+
+            /* প্রিন্টের টাইটেল */
+            .print-title {
+                text-align: center;
+                text-decoration: underline;
+                font-weight: bold;
+                font-size: 16px;
+                margin-bottom: 20px;
+            }
+
+            table { margin-top: 20px !important; }
+            th { background-color: transparent !important; }
+            th, td { 
+                padding: 6px 4px !important; 
+                font-size: 13px !important; 
+                border: 1px solid #000 !important;
+            }
+
+            .edit-box {
+                border: none !important;
+                background-color: transparent !important;
+                padding: 0 !important;
+            }
+
+            /* কলাম হাইড */
+            .action-col { display: none !important; }
+
+            .footer-sign {
+                margin-top: 40px !important;
+                padding-right: 20px !important;
+            }
+            .sign-input { border-bottom: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="toast">✅ Action Successful!</div>
+
+    <div class="app-container">
+        
+        <div class="controls no-print">
+            <a href="index.html" class="home-btn">⬅️ Home</a>
+            <button class="add-btn" onclick="addRow()">+ Add Row</button>
+            <button class="print-btn" onclick="window.print()">🖨️ Save as PDF</button>
+            <button class="clear-btn" onclick="clearData()">🗑️ Clear All</button>
+        </div>
+
+        <div class="document-area">
+            
+            <div class="print-title">
+                Depotwise Daily checking report for safety of lift operation over Adra Division
+            </div>
+
+            <table id="liftTable">
+                <thead>
+                    <tr>
+                        <th rowspan="2" style="width: 8%;">Name<br>Of the<br>station</th>
+                        <th rowspan="2" style="width: 10%;">Date of<br>inspection</th>
+                        <th rowspan="2" style="width: 12%;">Lift-PF<br>No/<br>Circulating<br>Area</th>
+                        <th rowspan="2" style="width: 8%;">Function-<br>ality of<br>ARD<br>Checked</th>
+                        <th rowspan="2" style="width: 12%;">Status of<br>Battery back<br>up of<br>emergency<br>light /Fans</th>
+                        <th colspan="3" style="width: 21%;">Availability of<br>Communication<br>System/Alert</th>
+                        <th rowspan="2" style="width: 14%;">Remarks if<br>any<br>deficiency</th>
+                        <th rowspan="2" style="width: 8%;">TDC</th>
+                        <th rowspan="2" class="action-col no-print" style="width: 7%;">Action</th>
+                    </tr>
+                    <tr>
+                        <th style="width: 7%;">Alarm</th>
+                        <th style="width: 7%;">Talk<br>back</th>
+                        <th style="width: 7%;">SMS<br>Alert</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+
+            <div class="footer-sign">
+                <div class="sign-row">
+                    <div>Signature:-</div>
+                    <div class="edit-box sign-input" contenteditable="true" id="f_sign"></div>
+                </div>
+                <div class="sign-row">
+                    <div>Name:-</div>
+                    <div class="edit-box sign-input" contenteditable="true" id="f_name">Mahendra Bedia</div>
+                </div>
+                <div class="sign-row">
+                    <div>Designation :-</div>
+                    <div class="edit-box sign-input" contenteditable="true" id="f_desig">SSE/EL/VSU</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        window.onload = loadData;
+
+        // ডিফল্ট ভ্যালু হিসেবে VSU এবং OK সেট করে দেওয়া হয়েছে
+        function addRow(stn="VSU", date="", area="", ard="OK", battery="OK", alarm="OK", talk="OK", sms="NA", remarks="NIL", tdc="") {
+            const tbody = document.getElementById("tableBody");
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td><div class="edit-box" contenteditable="true" oninput="saveData()">${stn}</div></td>
+                <td><div class="edit-box" contenteditable="true" oninput="saveData()">${date}</div></td>
+                <td><div class="edit-box" contenteditable="true" oninput="saveData()">${area}</div></td>
+                <td><div class="edit-box" contenteditable="true" oninput="saveData()">${ard}</div></td>
+                <td><div class="edit-box" contenteditable="true" oninput="saveData()">${battery}</div></td>
+                <td><div class="edit-box" contenteditable="true" oninput="saveData()">${alarm}</div></td>
+                <td><div class="edit-box" contenteditable="true" oninput="saveData()">${talk}</div></td>
+                <td><div class="edit-box" contenteditable="true" oninput="saveData()">${sms}</div></td>
+                <td><div class="edit-box" contenteditable="true" oninput="saveData()">${remarks}</div></td>
+                <td><div class="edit-box" contenteditable="true" oninput="saveData()">${tdc}</div></td>
+                <td class="action-col no-print"><button class="del-btn" onclick="deleteRow(this)">Remove</button></td>
+            `;
+            tbody.appendChild(tr);
+            saveData();
+        }
+
+        function deleteRow(btn) {
+            if(confirm("Delete this row?")) {
+                btn.closest("tr").remove();
+                saveData();
+            }
+        }
+
+        function saveData() {
+            const rows = document.querySelectorAll("#tableBody tr");
+            const data = Array.from(rows).map(row => {
+                const cells = row.querySelectorAll(".edit-box");
+                return {
+                    c1: cells[0].innerText, c2: cells[1].innerText, c3: cells[2].innerText,
+                    c4: cells[3].innerText, c5: cells[4].innerText, c6: cells[5].innerText,
+                    c7: cells[6].innerText, c8: cells[7].innerText, c9: cells[8].innerText, c10: cells[9].innerText
+                };
+            });
+            
+            // সিগনেচার ডাটা সেভ
+            const signData = {
+                sign: document.getElementById("f_sign").innerText,
+                name: document.getElementById("f_name").innerText,
+                desig: document.getElementById("f_desig").innerText
+            };
+
+            localStorage.setItem("liftReportData", JSON.stringify({ table: data, footer: signData }));
+        }
+
+        function loadData() {
+            const stored = JSON.parse(localStorage.getItem("liftReportData") || "{}");
+            
+            if (stored.table && stored.table.length > 0) {
+                stored.table.forEach(d => addRow(d.c1, d.c2, d.c3, d.c4, d.c5, d.c6, d.c7, d.c8, d.c9, d.c10));
+            } else {
+                for(let i=0; i<6; i++) addRow(); // ডিফল্ট ৬টি ফাঁকা লাইন
+            }
+
+            if (stored.footer) {
+                document.getElementById("f_sign").innerText = stored.footer.sign;
+                document.getElementById("f_name").innerText = stored.footer.name;
+                document.getElementById("f_desig").innerText = stored.footer.desig;
+            }
+            
+            // সিগনেচার এডিট করার সময়ও সেভ হবে
+            document.getElementById("f_sign").addEventListener("input", saveData);
+            document.getElementById("f_name").addEventListener("input", saveData);
+            document.getElementById("f_desig").addEventListener("input", saveData);
+        }
+
+        function clearData() {
+            if(confirm("Are you sure you want to clear all data?")) {
+                localStorage.removeItem("liftReportData");
+                document.getElementById("tableBody").innerHTML = "";
+                for(let i=0; i<6; i++) addRow();
+                showToast("✅ Cleared!");
+            }
+        }
+
+        function showToast(msg) {
+            var toast = document.getElementById("toast");
+            toast.innerText = msg;
+            toast.className = "show";
+            setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 3000);
+        }
+    </script>
+</body>
+</html>
